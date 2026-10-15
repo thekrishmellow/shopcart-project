@@ -75,6 +75,13 @@ export const createProduct = async (req, res) => {
  */
 export const getProducts = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                success: false,
+                message: "Database is not connected. Please verify MONGO_URI in Render environment settings and ensure 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access."
+            });
+        }
+
         const { search, category, sort } = req.query;
 
         // Build dynamic query object
@@ -109,7 +116,7 @@ export const getProducts = async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching products:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        return res.status(500).json({ success: false, message: error.message || "Internal server error" });
     }
 };
 

@@ -12,7 +12,8 @@ export const isAuthenticated = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Not authenticated' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const secret = process.env.JWT_SECRET || 'shopcart_jwt_default_secret_key_safe';
+        const decoded = jwt.verify(token, secret);
 
         const customer = await Customer.findById(decoded.id);
 

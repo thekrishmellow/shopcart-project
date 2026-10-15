@@ -49,9 +49,17 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Health Check Endpoint (useful for deployment monitoring on Render/Railway)
+// Health Check Endpoint (useful for deployment monitoring and debugging on Render)
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    const isDbConnected = mongoose.connection.readyState === 1;
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        database: isDbConnected ? 'connected' : 'disconnected',
+        hasMongoUri: Boolean(process.env.MONGO_URI),
+        hasJwtSecret: Boolean(process.env.JWT_SECRET),
+        nodeEnv: process.env.NODE_ENV || 'development'
+    });
 });
 
 // Serve frontend static assets from dist if available
@@ -111,10 +119,12 @@ if (process.env.MONGO_URI) {
             } catch (seedErr) {
                 console.log('Auto-seed check notice:', seedErr.message);
             }
-        })
-        .catch((err) => console.log('MongoDB connection error:', err.message));
+        .catch((err) => {
+            console.error('MongoDB connection error:', err.message);
+            console.error('TIP: Check MongoDB Atlas Network Access and ensure IP 0.0.0.0/0 (allow from anywhere) is enabled for cloud hosts like Render.');
+        });
 } else {
-    console.warn('WARNING: MONGO_URI is not set in environment variables!');
+    console.error('CRITICAL: MONGO_URI is missing from environment variables on Render! Go to Render Dashboard -> Environment tab and set MONGO_URI.');
 }
 
 const PORT = process.env.PORT || 8003;

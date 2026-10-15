@@ -1,5 +1,6 @@
 import Customer from "../models/customer.model.js";
 import bcrypt from 'bcrypt';
+import mongoose from 'mongoose';
 import generateToken from "../utils/generateToken.js";
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -13,6 +14,12 @@ const cookieOptions = {
 
 export const registerCustomer = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                message: 'Database is not connected. Please verify MONGO_URI in Render environment settings and ensure 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.'
+            });
+        }
+
         const { fullName, email, password, phone } = req.body;
 
         if (!fullName || !email || !password || !phone) {
@@ -39,9 +46,13 @@ export const registerCustomer = async (req, res) => {
             phone
         });
 
+        const token = generateToken(newCustomer._id);
+        res.cookie('token', token, cookieOptions);
+
         return res.status(201).json({
             success: true,
             message: "Customer registered successfully",
+            token,
             customer: {
                 _id: newCustomer._id,
                 fullName: newCustomer.fullName,
@@ -51,8 +62,8 @@ export const registerCustomer = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Something went wrong' });
+        console.error('Registration error:', error);
+        return res.status(500).json({ message: error.message || 'Something went wrong' });
     }
 };
 

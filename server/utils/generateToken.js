@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+    const secret = process.env.JWT_SECRET || 'shopcart_jwt_default_secret_key_safe';
+    return jwt.sign({ id }, secret, {
         expiresIn: '7d'
     });
 };
