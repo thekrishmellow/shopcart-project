@@ -69,6 +69,12 @@ export const registerCustomer = async (req, res) => {
 
 export const loginCustomer = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                message: 'Database is not connected. Please verify MONGO_URI in Render environment settings and ensure 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.'
+            });
+        }
+
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -104,8 +110,8 @@ export const loginCustomer = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Something went wrong' });
+        console.error('Login error:', error);
+        return res.status(500).json({ message: error.message || 'Something went wrong' });
     }
 };
 
