@@ -119,6 +119,7 @@ if (process.env.MONGO_URI) {
             } catch (seedErr) {
                 console.log('Auto-seed check notice:', seedErr.message);
             }
+        })
         .catch((err) => {
             console.error('MongoDB connection error:', err.message);
             console.error('TIP: Check MongoDB Atlas Network Access and ensure IP 0.0.0.0/0 (allow from anywhere) is enabled for cloud hosts like Render.');
