@@ -10,6 +10,8 @@ import productRoutes from './routes/product.routes.js';
 import wishlistRoutes from './routes/wishlist.routes.js';
 import cartRoutes from './routes/cart.routes.js';
 import orderRoutes from './routes/order.routes.js';
+import Product from './models/product.model.js';
+import { sampleProducts } from './seed.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,42 +54,71 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes
+// Serve frontend static assets from dist if available
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// For browser navigation (GET requests accepting text/html), serve the React SPA index.html
+app.use((req, res, next) => {
+    const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+    if (req.method === 'GET' && acceptsHtml && !req.path.startsWith('/health')) {
+        const indexPath = path.join(distPath, 'index.html');
+        return res.sendFile(indexPath, (err) => {
+            if (err) next();
+        });
+    }
+    next();
+});
+
+// API Routes (mounted both at /api and root paths for maximum compatibility)
+app.use('/api/customers', customerRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+
 app.use('/customers', customerRoutes);
 app.use('/products', productRoutes);
 app.use('/wishlist', wishlistRoutes);
 app.use('/cart', cartRoutes);
 app.use('/orders', orderRoutes);
 
-// In production, serve the React app build if dist folder exists
-const distPath = path.join(__dirname, '../dist');
-app.use(express.static(distPath));
-
-// Fallback for Single Page Application routing (non-API routes)
-app.use((req, res, next) => {
-    if (
-        req.method !== 'GET' ||
-        req.path.startsWith('/customers') ||
-        req.path.startsWith('/products') ||
-        req.path.startsWith('/wishlist') ||
-        req.path.startsWith('/cart') ||
-        req.path.startsWith('/orders') ||
-        req.path.startsWith('/health')
-    ) {
-        return next();
+// Fallback for Single Page Application routing (any remaining unhandled requests)
+app.use((req, res) => {
+    if (req.method === 'GET') {
+        const indexPath = path.join(distPath, 'index.html');
+        return res.sendFile(indexPath, (err) => {
+            if (err) {
+                res.status(404).json({ message: 'Resource not found' });
+            }
+        });
     }
-    const indexPath = path.join(distPath, 'index.html');
-    res.sendFile(indexPath, (err) => {
-        if (err) next();
-    });
+    res.status(404).json({ message: 'Resource not found' });
 });
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB connected'))
-    .catch((err) => console.log('MongoDB connection error:', err.message));
+// MongoDB Connection & Auto-seeding
+if (process.env.MONGO_URI) {
+    mongoose.connect(process.env.MONGO_URI)
+        .then(async () => {
+            console.log('MongoDB connected successfully');
+            try {
+                const count = await Product.countDocuments();
+                if (count === 0 && Array.isArray(sampleProducts) && sampleProducts.length > 0) {
+                    console.log('Database has 0 products. Auto-seeding initial products...');
+                    await Product.insertMany(sampleProducts);
+                    console.log(`Seeded ${sampleProducts.length} initial products successfully!`);
+                }
+            } catch (seedErr) {
+                console.log('Auto-seed check notice:', seedErr.message);
+            }
+        })
+        .catch((err) => console.log('MongoDB connection error:', err.message));
+} else {
+    console.warn('WARNING: MONGO_URI is not set in environment variables!');
+}
 
 const PORT = process.env.PORT || 8003;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

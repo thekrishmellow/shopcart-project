@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
-const sampleProducts = [
+export const sampleProducts = [
     {
         name: "Mechanical Keyboard",
         description: "RGB mechanical keyboard with hot-swappable blue switches, aircraft-grade aluminum frame, and customizable backlighting profiles.",
@@ -128,4 +128,6 @@ const seedDB = async () => {
     }
 };
 
-seedDB();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    seedDB();
+}
